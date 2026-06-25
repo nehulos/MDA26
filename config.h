@@ -66,6 +66,8 @@ nZA620_m5 (sensor de huella)
 lengueta magnética*/
 
 constexpr int EMAG_PIN = 33;
+constexpr int ENROLLMENT_TIMEOUT_MS = 10000;
+constexpr int STATUS_INTERVAL_MS = 5000;
 
 // ======================================================
 // CONFIGURACIÓN DEL SISTEMA
@@ -93,8 +95,5 @@ constexpr int  MQTT_PORT     = 1883;
 
 constexpr char MQTT_USER[] = "esp32";
 constexpr char MQTT_PASS[] = "tomato";
-
-constexpr char TOPIC_STATUS[] = "mda26/test";
-constexpr char TOPIC_CMD[]    = "mda26/cmd";
 
 #endif // CONFIG_H

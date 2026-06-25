@@ -47,13 +47,13 @@ namespace network
             {
                 Serial.println("MQTT connected");
 
-                mqttClient.subscribe(
-                    TOPIC_CMD
-                );
+                //mqttClient.subscribe(
+                //    TOPIC_CMD
+                //);
 
                 publish(
-                    TOPIC_STATUS,
-                    "MQTT connected",
+                    "mda26/status",
+                    "connected",
                     true
                 );
             }

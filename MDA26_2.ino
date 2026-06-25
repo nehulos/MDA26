@@ -1,4 +1,7 @@
-//INCLUIMOS MÓDULOS
+//include libs
+#include <time.h>
+
+//include modules
 #include "config.h"
 
 #include "leds.h"
@@ -68,7 +71,7 @@ void setup(){;
 
     //load modules
     initLeds({RED_PIN, YELLOW_PIN, GREEN_PIN});
-    blinkLed(3,true);
+    setLed(3,true);
     Serial.print("leds loaded");
 
     init_fingerprint();
@@ -90,9 +93,103 @@ void setup(){;
     Serial.print("ESP32 IP: ");
     Serial.println(network::localIP());
     Serial.println();
-  
+
+    //subscribe to topics
+    network::subscribe("mda26/door");
+    network::subscribe("mda26/fingerprint");
+    network::subscribe("mda26/door");
+
+    //sync fingerprints
+    sync_fingerprints();
+
+    //send fingerprints to server
+    for_each_fingerprint_id(0, [](int id){
+        char payload[10];
+        sprintf(payload, "%d", id);
+        network::publish("mda26/fingerprint/exists", payload, true);
+    });
+
+    //state machine
+    int state = 0
+    //0 = waiting
+    //10 = enrollment first step
+    //11 = enrollment second step
+
+    //timers
+    uint32_t statusTime = millis();
+    uint32_t enrollmentTime = millis();
+    uint32_t doorTime = -1; //-1 means no door timer is active
+
+    setLed(3,false);
+
+}
+
+void unlock_door_timed(int ms){
+    setLed(3,true);
+    unlock_door();
+    doorTime = millis() + ms;
+}
+
+void begin_enrollment(){
+    state = 10;
+    enrollmentTime = millis();
+    blinkLed(2, 100, 100, 3);
+    setLed(2, true);
+}
+
+void end_enrollment(){
+    state = 0;
+    blinkLed(1, 100, 100, 3);
+    setLed(2, false);
 }
 
 void loop(){
+
+    if doorTime != -1 and millis() > doorTime {
+        lock_door();
+        doorTime = -1;
+        setLed(3,false);
+    }
+
+    if state == 0 {
+        //waiting for events
+        if is_finger_present(0) {
+            int id = get_fingerprint_id(0);
+            if id >= 0 {
+                network::publish("mda26/fingerprint/scan", String(id).c_str());
+                unlock_door_timed(5000);
+            } else {
+                blinkLed(1, 100, 100, 2);
+            }
+        }
+    } else if state == 10 {
+        //enrollment first step
+        if is_finger_present(0) {
+            capture_fingerprint(0, 1);
+            state = 11;
+            enrollmentTime = millis();
+            blinkLed(3, 100, 100, 3);
+        } else if millis() - enrollmentTime > ENROLLMENT_TIMEOUT_MS {
+            end_enrollment();
+        }
+    } else if state == 11 {
+        //enrollment second step
+        if is_finger_present(0) {
+            capture_fingerprint(0, 2);
+            int newId = get_next_available_id();
+            finalize_enrollment(0, newId);
+            network::publish("mda26/fingerprint/enrolled", String(newId).c_str());
+            state = 0;
+            blinkLed(3, 100, 100, 5);
+            setLed(2, false);
+        } else if millis() - enrollmentTime > ENROLLMENT_TIMEOUT_MS {
+            end_enrollment();
+        }
+    }
+
+    if (millis() - statusTime > STATUS_INTERVAL_MS) {
+        statusTime = millis();
+        network::publish("mda26/status", is_door_open() ? "open" : "closed");
+    }
 
 }
