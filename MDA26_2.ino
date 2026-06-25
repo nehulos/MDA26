@@ -43,6 +43,25 @@
 
 ///////////////////////////////////////////////////////////
 
+void unlock_door_timed(int ms){
+    setLed(3,true);
+    unlock_door();
+    doorTime = millis() + ms;
+}
+
+void begin_enrollment(){
+    state = 10;
+    enrollmentTime = millis();
+    blinkLed(2, 100, 100, 3);
+    setLed(2, true);
+}
+
+void end_enrollment(){
+    state = 0;
+    blinkLed(1, 100, 100, 3);
+    setLed(2, false);
+}
+
 void onMessage(
     char* topic,
     byte* payload,
@@ -60,7 +79,58 @@ void onMessage(
     }
 
     Serial.println();
+
+    switch (String(topic))
+    {
+        case "mda26/door":
+            //if payload is "open", unlock the door
+            if (length == 4 && strncmp((char*)payload, "open", 4) == 0)
+            {
+                unlock_door();
+            }
+            //if payload is "close", lock the door
+            else if (length == 5 && strncmp((char*)payload, "close", 5) == 0)
+            {
+                lock_door();
+            }
+            //if payload is a number, unlock the door for that many milliseconds
+            else if (length > 0)
+            {
+                char buffer[10];
+                strncpy(buffer, (char*)payload, length);
+                buffer[length] = '\0';
+                int ms = atoi(buffer);
+                if (ms > 0)
+                {
+                    unlock_door_timed(ms);
+                }
+            }
+            break;
+
+        case "mda26/fingerprint":
+            if (length == 7 && strncmp((char*)payload, "enroll", 7) == 0)
+            {
+                begin_enrollment();
+            }
+            break;
+        case "mda26/fingerprint/remove":
+            if (length > 0)
+            {
+                char buffer[10];
+                strncpy(buffer, (char*)payload, length);
+                buffer[length] = '\0';
+                int id = atoi(buffer);
+                if (id >= 0)
+                {
+                    delete_fingerprint(id);
+                    network::publish("mda26/fingerprint/removed", String(id).c_str());
+                }
+            }
+            break;
+    }
 }
+
+///////////////////////////////////////////////////////////
 
 void setup(){;
 
@@ -122,25 +192,6 @@ void setup(){;
 
     setLed(3,false);
 
-}
-
-void unlock_door_timed(int ms){
-    setLed(3,true);
-    unlock_door();
-    doorTime = millis() + ms;
-}
-
-void begin_enrollment(){
-    state = 10;
-    enrollmentTime = millis();
-    blinkLed(2, 100, 100, 3);
-    setLed(2, true);
-}
-
-void end_enrollment(){
-    state = 0;
-    blinkLed(1, 100, 100, 3);
-    setLed(2, false);
 }
 
 void loop(){
