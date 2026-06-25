@@ -1,14 +1,15 @@
 #pragma once
 
+#include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 
-namespace wifi
+namespace network
 {
-    using MessageCallback =
-        void (*)(char* topic, byte* payload, unsigned int length);
+    using MessageCallback = void (*)(char* topic, byte* payload, unsigned int length);
 
     void begin(MessageCallback callback);
+
     void update();
 
     bool connected();
@@ -19,7 +20,9 @@ namespace wifi
         bool retained = false
     );
 
-    bool subscribe(const char* topic);
+    bool subscribe(
+        const char* topic
+    );
 
     IPAddress localIP();
 

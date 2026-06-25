@@ -23,5 +23,14 @@ bool is_finger_present(int sensor_num);
 bool capture_fingerprint(int sensor_num, int buffer);
 bool finalize_enrollment(int sensor_num, int id);
 
+// Syncronization
+typedef void (*FingerprintIdCallback)(int id);
+
+void for_each_fingerprint_id(
+    int sensorId,
+    FingerprintIdCallback callback
+);
+
+
 // Database management
 bool delete_fingerprint(int id);

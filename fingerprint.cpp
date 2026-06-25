@@ -217,3 +217,21 @@ bool is_finger_present(int sensor_num)
             return false;
     }
 }
+
+typedef void (*FingerprintIdCallback)(int id);
+
+void for_each_fingerprint_id(
+    int sensorId,
+    FingerprintIdCallback callback
+)
+{
+    Adafruit_Fingerprint& finger = sensorId == 1 ? finger1 : finger2;
+
+    for (int fingerprintId = 1; fingerprintId <= MAX_FINGERPRINT_ID; fingerprintId++)
+    {
+        if (finger.loadModel(fingerprintId) == FINGERPRINT_OK)
+        {
+            callback(fingerprintId);
+        }
+    }
+}

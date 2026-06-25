@@ -5,7 +5,7 @@
 
 #include "config.h"
 
-namespace wifi
+namespace network
 {
     static WiFiClient wifiClient;
     static PubSubClient mqttClient(wifiClient);
