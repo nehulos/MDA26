@@ -11,6 +11,9 @@ extern Adafruit_Fingerprint finger2;
 
 constexpr int MAX_FINGERPRINT_ID = 162;
 
+extern bool finger1Available;
+extern bool finger2Available;
+
 // Initialization / maintenance
 bool init_fingerprint();
 bool sync_fingerprints();

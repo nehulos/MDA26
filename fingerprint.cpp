@@ -2,17 +2,32 @@
 #include <HardwareSerial.h>
 #include "config.h"
 
+bool finger1Available = false;
+bool finger2Available = false;
+
 HardwareSerial fpSerial1(1);
 HardwareSerial fpSerial2(2);
 
 Adafruit_Fingerprint finger1(&fpSerial1);
 Adafruit_Fingerprint finger2(&fpSerial2);
 
-static constexpr int MAX_FINGERPRINT_ID = 162;
+//static constexpr int MAX_FINGERPRINT_ID = 162;
 
-static bool fingerprintExists(Adafruit_Fingerprint& finger, int id)
+static bool fingerprintExists(int sensorNum, int id)
 {
-    return finger.loadModel(id) == FINGERPRINT_OK;
+    switch (sensorNum)
+    {
+        case 1:
+            return finger1Available
+                && finger1.loadModel(id) == FINGERPRINT_OK;
+
+        case 2:
+            return finger2Available
+                && finger2.loadModel(id) == FINGERPRINT_OK;
+
+        default:
+            return false;
+    }
 }
 
 static bool isFingerPresent(Adafruit_Fingerprint& finger)
@@ -24,8 +39,13 @@ static int findFreeId()
 {
     for (int id = 1; id <= MAX_FINGERPRINT_ID; id++)
     {
-        bool used1 = fingerprintExists(finger1, id);
-        bool used2 = fingerprintExists(finger2, id);
+        bool used1 =
+            finger1Available &&
+            fingerprintExists(1, id);
+
+        bool used2 =
+            finger2Available &&
+            fingerprintExists(2, id);
 
         if (!used1 && !used2)
             return id;
@@ -36,12 +56,15 @@ static int findFreeId()
 
 bool sync_fingerprints()
 {
+    if (!finger1Available || !finger2Available)
+        return true;
+    
     bool success = true;
 
     for (int id = 1; id <= MAX_FINGERPRINT_ID; id++)
     {
-        bool exists1 = fingerprintExists(finger1, id);
-        bool exists2 = fingerprintExists(finger2, id);
+        bool exists1 = fingerprintExists(1, id);
+        bool exists2 = fingerprintExists(2, id);
 
         if (exists1 != exists2)
         {
@@ -71,13 +94,36 @@ bool init_fingerprint()
         F2TXD_PIN
     );
 
-    if (!finger1.verifyPassword())
-        return false;
+    finger1Available = finger1.verifyPassword();
+    finger2Available = finger2.verifyPassword();
 
-    if (!finger2.verifyPassword())
-        return false;
+    if (finger1Available)
+        Serial.println("Fingerprint sensor 1 detected");
+    else
+        Serial.println("Fingerprint sensor 1 not detected");
 
-    sync_fingerprints();
+    if (finger2Available)
+        Serial.println("Fingerprint sensor 2 detected");
+    else
+        Serial.println("Fingerprint sensor 2 not detected");
+
+    if (!finger1Available && !finger2Available)
+    {
+        Serial.println("ERROR: No fingerprint sensors detected");
+        return false;
+    }
+
+    if (finger1Available != finger2Available)
+    {
+        Serial.println(
+            "WARNING: Only one fingerprint sensor connected"
+        );
+    }
+
+    if (finger1Available && finger2Available)
+    {
+        sync_fingerprints();
+    }
 
     return true;
 }
@@ -107,13 +153,24 @@ int get_fingerprint_id(int sensor_num)
             return scan(finger2);
 
         case 0:
-        {
-            int id = scan(finger1);
+{
+            if (finger1Available)
+            {
+                int id = scan(finger1);
 
-            if (id >= 0)
-                return id;
+                if (id >= 0)
+                    return id;
+            }
 
-            return scan(finger2);
+            if (finger2Available)
+            {
+                int id = scan(finger2);
+
+                if (id >= 0)
+                    return id;
+            }
+
+            return -1;
         }
 
         default:
@@ -127,13 +184,13 @@ bool delete_fingerprint(int id)
 
     if (finger1.deleteModel(id) != FINGERPRINT_OK)
     {
-        if (fingerprintExists(finger1, id))
+        if (fingerprintExists(1, id))
             ok = false;
     }
 
     if (finger2.deleteModel(id) != FINGERPRINT_OK)
     {
-        if (fingerprintExists(finger2, id))
+        if (fingerprintExists(2, id))
             ok = false;
     }
 
@@ -199,23 +256,27 @@ bool finalize_enrollment(int sensor_num, int id)
     }
 }
 
-bool is_finger_present(int sensor_num)
+int is_finger_present(int sensor_num)
 {
     switch (sensor_num)
     {
         case 1:
-            return isFingerPresent(finger1);
+            if(finger1Available && isFingerPresent(finger1)){
+                return 1;
+            }
 
         case 2:
-            return isFingerPresent(finger2);
-
+            if(finger2Available && isFingerPresent(finger2)){
+                return 2;
+            }
         case 0:
-            return isFingerPresent(finger1)
-                || isFingerPresent(finger2);
+            return (finger1Available && isFingerPresent(finger1)) ||
+                   (finger2Available && isFingerPresent(finger2));
 
         default:
-            return false;
+            return -1;
     }
+    return -1;
 }
 
 typedef void (*FingerprintIdCallback)(int id);
