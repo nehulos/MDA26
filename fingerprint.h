@@ -1,0 +1,27 @@
+#pragma once
+
+#include <Adafruit_Fingerprint.h>
+#include <HardwareSerial.h>
+
+extern HardwareSerial fpSerial1;
+extern HardwareSerial fpSerial2;
+
+extern Adafruit_Fingerprint finger1;
+extern Adafruit_Fingerprint finger2;
+
+constexpr int MAX_FINGERPRINT_ID = 162;
+
+// Initialization / maintenance
+bool init_fingerprint();
+bool sync_fingerprints();
+
+// Identification
+int get_fingerprint_id(int sensor_num);
+bool is_finger_present(int sensor_num);
+
+// Enrollment
+bool capture_fingerprint(int sensor_num, int buffer);
+bool finalize_enrollment(int sensor_num, int id);
+
+// Database management
+bool delete_fingerprint(int id);
