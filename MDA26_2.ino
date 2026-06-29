@@ -314,6 +314,11 @@ void setup()
             );
         }
     );
+    network::publish(
+        "mda26/fingerprint/exists",
+        -1,
+        false
+    );
 
     ///////////////////////////////////////////////////////
 
