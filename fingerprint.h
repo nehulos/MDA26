@@ -9,14 +9,13 @@ extern HardwareSerial fpSerial2;
 extern Adafruit_Fingerprint finger1;
 extern Adafruit_Fingerprint finger2;
 
-constexpr int MAX_FINGERPRINT_ID = 162;
-
 extern bool finger1Available;
 extern bool finger2Available;
 
 // Initialization / maintenance
 bool init_fingerprint();
 bool sync_fingerprints();
+int get_next_available_id();
 
 // Identification
 int get_fingerprint_id(int sensor_num);

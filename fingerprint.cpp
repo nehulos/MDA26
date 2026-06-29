@@ -11,7 +11,6 @@ HardwareSerial fpSerial2(2);
 Adafruit_Fingerprint finger1(&fpSerial1);
 Adafruit_Fingerprint finger2(&fpSerial2);
 
-//static constexpr int MAX_FINGERPRINT_ID = 162;
 
 static bool fingerprintExists(int sensorNum, int id)
 {
@@ -35,7 +34,7 @@ static bool isFingerPresent(Adafruit_Fingerprint& finger)
     return finger.getImage() == FINGERPRINT_OK;
 }
 
-static int findFreeId()
+static int get_next_available_id()
 {
     for (int id = 1; id <= MAX_FINGERPRINT_ID; id++)
     {

@@ -19,10 +19,4 @@ void lock_door();
  */
 void unlock_door();
 
-/**
- * Realiza una apertura temporal (ideal para accesos concedidos).
- * @param ms Tiempo en milisegundos que permanecerá abierta.
- */
-void unlock_door_timed(int ms);
-
 #endif

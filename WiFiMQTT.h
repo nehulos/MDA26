@@ -20,6 +20,12 @@ namespace network
         bool retained = false
     );
 
+    bool publish(
+        const char* topic,
+        int payload,
+        bool retained = false
+    );
+
     bool subscribe(
         const char* topic
     );

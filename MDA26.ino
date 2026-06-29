@@ -408,7 +408,7 @@ void loop()
 
         lastPresentFinger  =
             fingerPresent;
-        continue;
+        return;
     }
 
     ///////////////////////////////////////////////////////

@@ -25,12 +25,3 @@ void unlock_door() {
     // HIGH desactiva el relé (corta el circuito de 12V)
     digitalWrite(EMAG_PIN, HIGH);
 }
-
-/**
- * Flujo estándar de acceso: desbloquea, espera y vuelve a bloquear.
- */
-void unlock_door_timed(int ms) {
-    unlock_door();
-    delay(ms);
-    lock_door();
-}

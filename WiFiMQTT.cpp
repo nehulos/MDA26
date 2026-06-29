@@ -100,16 +100,24 @@ namespace network
     }
 
     bool publish(
-        const char* topic,
-        const char* payload,
-        bool retained
-    )
+            const char* topic,
+            const char* payload,
+            bool retained
+        )
     {
-        return mqttClient.publish(
-            topic,
-            payload,
-            retained
-        );
+        return mqttClient.publish(topic, payload, retained);
+    }
+
+    bool publish(
+            const char* topic,
+            int payload,
+            bool retained
+        )
+    {
+        char buffer[12];
+        snprintf(buffer, sizeof(buffer), "%d", payload);
+
+        return mqttClient.publish(topic, buffer, retained);
     }
 
     bool subscribe(const char* topic)

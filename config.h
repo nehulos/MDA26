@@ -10,8 +10,8 @@
 // ------------------------------------------------------
 
 // UART0 (Serial)
-constexpr int RX = 3;
-constexpr int TX = 1;
+constexpr int SERIAL_RX_PIN = 3;
+constexpr int SERIAL_TX_PIN = 1;
 
 // ------------------------------------------------------
 // Sensores de huella
@@ -73,7 +73,7 @@ constexpr int STATUS_INTERVAL_MS = 5000;
 // CONFIGURACIÓN DEL SISTEMA
 // ======================================================
 
-constexpr int MAX_FINGERPRINTS = 162;
+constexpr int MAX_FINGERPRINT_ID = 162;
 
 constexpr char AUTH_NFC_FILE[] = "/authorized_nfc.txt";
 
