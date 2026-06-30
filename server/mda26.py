@@ -2,7 +2,7 @@ import json
 import os
 import time
 
-TOPIC = {
+topic = TOPIC = {
     "status": "mda26/status",
     "door": "mda26/door",
 
@@ -16,7 +16,7 @@ TOPIC = {
     "fp_remove": "mda26/fingerprint/remove",
 }
 
-DB_FILE = "/config/mda26.json"
+DB_FILE = "pyscript/mda26.json"
 
 fingerprints = {}
 events = []
@@ -29,33 +29,33 @@ sync = set()
 remove_retries = {}
 
 
-# -------------------------
+# ------------------------- 
 
-def load():
-    global fingerprints, events
 
+@pyscript_executor
+def load_db():
     if not os.path.exists(DB_FILE):
-        save()
-        return
+        return {
+            "fingerprints": {},
+            "events": []
+        }
 
-    with open(DB_FILE, "r") as f:
-        data = json.load(f)
+    with open(DB_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-    fingerprints = data.get("fingerprints", {})
-    events = data.get("events", [])
 
+@pyscript_executor
+def save_db(data):
+    os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
+
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
 
 def save():
-    with open(DB_FILE, "w") as f:
-        json.dump(
-            {
-                "fingerprints": fingerprints,
-                "events": events
-            },
-            f,
-            indent=4
-        )
-
+    save_db({
+        "fingerprints": fingerprints,
+        "events": events
+    })
 
 def add_event(event):
     event["time"] = int(time.time())
@@ -70,10 +70,18 @@ def add_event(event):
 
 # -------------------------
 
-@time_trigger("startup")
+@time_trigger()
 def startup():
-    logger.debug("MDA26 server initialized")
-    load()
+    global fingerprints, events
+
+    log.warning("Startup")
+
+    db = load_db()
+
+    fingerprints = db.get("fingerprints", {})
+    events = db.get("events", {})
+
+    log.warning("Loaded")
 
 
 #-------------------------------------------------------------#
@@ -95,7 +103,7 @@ def mqtt_status(payload=None):
             door_open_time = time.time()
             door_alert_sent = False
 
-            logger.info("Door opened")
+            log.warning("Door opened")
 
         door_open = True
 
@@ -103,7 +111,7 @@ def mqtt_status(payload=None):
     elif payload == "closed":
 
         if door_open:
-            logger.info("Door closed")
+            log.warning("Door closed")
 
         door_open = False
         door_open_time = 0
@@ -118,7 +126,7 @@ def get_door_alert_time():
 
     return float(value)
 
-@time_trigger("period(/10)")
+@time_trigger("period(2025-01-01 00:00:00, 10s)")
 def check_door():
 
     global door_alert_sent
@@ -132,7 +140,7 @@ def check_door():
 
     if elapsed >= alert_time and not door_alert_sent:
 
-        logger.warning(
+        log.warning(
             "Door has been open for %s seconds",
             int(elapsed)
         )
@@ -152,7 +160,7 @@ def check_door():
 @state_trigger("input_number.door_alert_time")
 def alert_time_changed(value=None):
 
-    logger.info(
+    log.warning(
         "New door alert time: %s seconds",
         value
     )
@@ -167,19 +175,19 @@ def mqtt_exists(payload=None):
     ESP is source of truth.
     """
 
-    logger.debug("ESP fingerprint sync: %s", payload)
+    log.warning("ESP fingerprint sync: %s", payload)
 
     try:
         fid = int(payload)
     except:
-        logger.error("Invalid fingerprint ID: %s", payload)
+        log.error("Invalid fingerprint ID: %s", payload)
         return
 
 
     if fid == -1:
         # ESP finished sending list.
         # Remove IDs not found in ESP.
-        logger.debug("Revising fingerprint missing IDs")
+        log.warning("Revising fingerprint missing IDs")
 
         missing = [
             x for x in fingerprints
@@ -187,7 +195,7 @@ def mqtt_exists(payload=None):
         ]
 
         for x in missing:
-            logger.debug("Removing missing fingerprint ID: %s", x)
+            log.warning("Removing missing fingerprint ID: %s", x)
             del fingerprints[x]
 
         sync.clear()
@@ -200,7 +208,7 @@ def mqtt_exists(payload=None):
 
     # already exists
     if str(fid) in fingerprints:
-        logger.debug("Already existed fingerprint ID: %s", payload)
+        log.warning("Already existed fingerprint ID: %s", payload)
         return
 
 
@@ -210,7 +218,7 @@ def mqtt_exists(payload=None):
         "created": int(time.time())
     }
 
-    logger.debug("Added missing fingerprint ID: %s", payload)
+    log.warning("Added missing fingerprint ID: %s", payload)
 
     add_event({
         "type": "enrolled_sync",
@@ -225,7 +233,7 @@ def mqtt_scan(payload=None):
         fid = int(payload)
 
     except:
-        logger.error("Invalid fingerprint ID: %s", payload)
+        log.error("Invalid fingerprint ID: %s", payload)
         return
 
 
@@ -241,14 +249,14 @@ def mqtt_scan(payload=None):
 
         message = f"Door opened by {name}"
 
-        logger.info(message)
+        log.warning(message)
 
 
     else:
 
         message = f"Door opened by unknown fingerprint ID: {fid}"
 
-        logger.warning(message)
+        log.warning(message)
 
 
     # Notify Home Assistant
@@ -268,7 +276,7 @@ def mqtt_enrolled(payload=None):
     try:
         fid = int(payload)
     except:
-        logger.error("Invalid fingerprint ID: %s", payload)
+        log.error("Invalid fingerprint ID: %s", payload)
         return
 
 
@@ -277,7 +285,7 @@ def mqtt_enrolled(payload=None):
         "created": int(time.time())
     }
 
-    logger.debug("Enrolled new fingerprint ID: %s", payload)
+    log.warning("Enrolled new fingerprint ID: %s", payload)
 
 
     add_event({
@@ -295,7 +303,7 @@ def mqtt_removed(payload=None):
     try:
         fid = int(payload)
     except:
-        logger.error("Invalid fingerprint ID: %s", payload)
+        log.error("Invalid fingerprint ID: %s", payload)
         return
 
 
@@ -308,7 +316,7 @@ def mqtt_removed(payload=None):
         "id": fid
     })
 
-    logger.debug("Successfully removed fingerprint ID: %s", payload)
+    log.warning("Successfully removed fingerprint ID: %s", payload)
 
 
     save()
@@ -329,12 +337,12 @@ def mqtt_remove_failed(payload=None):
 
     if remove_retries[fid] < 3:
 
-        logger.debug("Retrying remove fingerprint ID: %s", payload)
+        log.warning("Retrying remove fingerprint ID: %s", payload)
 
         # retry
         mqtt.publish(
-            TOPIC["fp_remove"],
-            str(fid)
+            topic = TOPIC["fp_remove"],
+            payload = str(fid)
         )
 
     else:
@@ -345,7 +353,7 @@ def mqtt_remove_failed(payload=None):
             "attempts": remove_retries[fid]
         })
 
-        logger.debug("Could not remove fingerprint ID: %s", payload)
+        log.warning("Could not remove fingerprint ID: %s", payload)
 
         remove_retries.pop(fid, None)
 
@@ -359,8 +367,8 @@ def mqtt_remove_failed(payload=None):
 def mda26_open():
 
     mqtt.publish(
-        TOPIC["door"],
-        "open"
+        topic = TOPIC["door"],
+        payload = "open"
     )
 
 
@@ -368,8 +376,8 @@ def mda26_open():
 def mda26_close():
 
     mqtt.publish(
-        TOPIC["door"],
-        "close"
+        topic = TOPIC["door"],
+        payload = "close"
     )
 
 
@@ -377,8 +385,8 @@ def mda26_close():
 def mda26_open_time(milliseconds):
 
     mqtt.publish(
-        TOPIC["door"],
-        str(milliseconds)
+        topic = TOPIC["door"],
+        payload = str(milliseconds)
     )
 
 
@@ -386,8 +394,8 @@ def mda26_open_time(milliseconds):
 def mda26_enroll():
 
     mqtt.publish(
-        TOPIC["fp_cmd"],
-        "enroll"
+        topic = TOPIC["fp_cmd"],
+        payload = "enroll"
     )
 
 
@@ -395,6 +403,6 @@ def mda26_enroll():
 def mda26_remove(id):
 
     mqtt.publish(
-        TOPIC["fp_remove"],
-        str(id)
+        topic = TOPIC["fp_remove"],
+        payload = str(id)
     )
