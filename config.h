@@ -67,13 +67,13 @@ lengueta magnética*/
 
 constexpr int EMAG_PIN = 33;
 constexpr int ENROLLMENT_TIMEOUT_MS = 10000;
-constexpr int STATUS_INTERVAL_MS = 5000;
+constexpr int STATUS_INTERVAL_MS = 20000;
 
 // ======================================================
 // CONFIGURACIÓN DEL SISTEMA
 // ======================================================
 
-constexpr int MAX_FINGERPRINT_ID = 162;
+constexpr int MAX_FINGERPRINT_ID = 16; //162
 
 constexpr char AUTH_NFC_FILE[] = "/authorized_nfc.txt";
 
@@ -90,7 +90,7 @@ constexpr char WIFI_PASSWORD[] = "10293847";
 // CONFIGURACIÓN MQTT
 // ======================================================
 
-constexpr char MQTT_SERVER[] = "192.168.40.101";
+constexpr char MQTT_SERVER[] = "192.168.40.5";
 constexpr int  MQTT_PORT     = 1883;
 
 constexpr char MQTT_USER[] = "esp32";
