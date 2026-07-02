@@ -8,8 +8,8 @@ bool finger2Available = false;
 HardwareSerial fpSerial1(1);
 HardwareSerial fpSerial2(2);
 
-Adafruit_Fingerprint finger1(&fpSerial1);
-Adafruit_Fingerprint finger2(&fpSerial2);
+Adafruit_Fingerprint finger1 = Adafruit_Fingerprint(&fpSerial1);
+Adafruit_Fingerprint finger2 = Adafruit_Fingerprint(&fpSerial2);
 
 
 static bool fingerprintExists(int sensorNum, int id)
@@ -34,7 +34,7 @@ static bool isFingerPresent(Adafruit_Fingerprint& finger)
     return finger.getImage() == FINGERPRINT_OK;
 }
 
-static int get_next_available_id()
+int get_next_available_id()
 {
     for (int id = 1; id <= MAX_FINGERPRINT_ID; id++)
     {
@@ -85,6 +85,7 @@ bool init_fingerprint()
         F1RXD_PIN,
         F1TXD_PIN
     );
+    Serial.printf("UART1 RX=%d TX=%d\n", F1RXD_PIN, F1TXD_PIN);
 
     fpSerial2.begin(
         57600,
@@ -93,8 +94,17 @@ bool init_fingerprint()
         F2TXD_PIN
     );
 
+    finger1.begin(57600);
+    finger2.begin(57600);
+
+    delay(100);
+
     finger1Available = finger1.verifyPassword();
     finger2Available = finger2.verifyPassword();
+
+    uint8_t p = finger1.getParameters();
+
+    Serial.printf("Finger1 getParameters: 0x%02X\n", p);
 
     if (finger1Available)
         Serial.println("Fingerprint sensor 1 detected");
@@ -228,15 +238,24 @@ bool capture_fingerprint(int sensor_num, int buffer)
 
 bool finalize_enrollment(int sensor_num, int id)
 {
+    Serial.print("trying to finish enrollment, id: "); 
+    Serial.print(id);
+    Serial.print(", sensor num is "); 
+    Serial.println(sensor_num);
+
     if (id < 1 || id > MAX_FINGERPRINT_ID)
+        Serial.print("indicated id is out of bound: ");
+        Serial.println(id);
         return false;
 
     auto finalize = [&](Adafruit_Fingerprint& finger) -> bool
     {
         if (finger.createModel() != FINGERPRINT_OK)
+            Serial.print("could not create model");
             return false;
 
         if (finger.storeModel(id) != FINGERPRINT_OK)
+            Serial.print("could not store model");
             return false;
 
         return true;
@@ -282,16 +301,20 @@ typedef void (*FingerprintIdCallback)(int id);
 
 void for_each_fingerprint_id(
     int sensorId,
-    FingerprintIdCallback callback
+    FingerprintIdCallback foundCallback,
+    FingerprintIdCallback missingCallback
 )
 {
-    Adafruit_Fingerprint& finger = sensorId == 1 ? finger1 : finger2;
+    Adafruit_Fingerprint& finger =
+    (sensorId == 2 && finger2Available) ? finger2 : finger1;
 
     for (int fingerprintId = 1; fingerprintId <= MAX_FINGERPRINT_ID; fingerprintId++)
     {
         if (finger.loadModel(fingerprintId) == FINGERPRINT_OK)
         {
-            callback(fingerprintId);
+            foundCallback(fingerprintId);
+        }else{
+            missingCallback(fingerprintId);
         }
     }
 }
