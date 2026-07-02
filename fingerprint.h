@@ -30,7 +30,8 @@ typedef void (*FingerprintIdCallback)(int id);
 
 void for_each_fingerprint_id(
     int sensorId,
-    FingerprintIdCallback callback
+    FingerprintIdCallback foundCallback,
+    FingerprintIdCallback missingCallback
 );
 
 
