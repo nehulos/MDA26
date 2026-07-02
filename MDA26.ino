@@ -77,6 +77,8 @@ void unlock_door_timed(int ms)
 {
     setLed(2, true);
 
+    Serial.println("door unlocked");
+
     unlock_door();
 
     doorUnlockUntil = millis() + ms;
@@ -86,6 +88,8 @@ void unlock_door_timed(int ms)
 void begin_enrollment()
 {
     state = STATE_ENROLL_FIRST;
+    Serial.print("state = ");
+    Serial.println(state);
 
     enrollmentTime = millis();
 
@@ -98,6 +102,9 @@ void end_enrollment()
     state = STATE_IDLE;
     lastEnrolledFinger = -1;
     lastEnrolledId = -1;
+
+    Serial.print("state = ");
+    Serial.println(state);
 
     blinkLed(0, 100, 100, 3);
 
@@ -162,12 +169,14 @@ void onMessage(
         //if payload is "open", unlock the door
         if (payload_equals(payload, length, "open"))
         {
+            Serial.println("door open");
             unlock_door();
         }
 
         //if payload is "close", lock the door
         else if (payload_equals(payload, length, "close"))
         {
+            Serial.println("door close");
             lock_door();
         }
 
@@ -289,31 +298,60 @@ void setup()
 
     //subscribe to topics
 
+    network::update();
+
     network::subscribe("mda26/door");
 
     network::subscribe("mda26/fingerprint");
 
     network::subscribe("mda26/fingerprint/remove");
 
+    Serial.println("suscribed to topics");
+
     ///////////////////////////////////////////////////////
 
     //send fingerprints to server
+
+    network::update();
 
     for_each_fingerprint_id(
         0,
         [](int id)
         {
+            network::update();
+
             char payload[12];
 
             sprintf(payload, "%d", id);
+
+            Serial.print("sending id: ");
+            Serial.println(payload);
 
             network::publish(
                 "mda26/fingerprint/exists",
                 payload,
                 false
             );
+
+            Serial.print("sent id: ");
+            Serial.println(payload);
+
+            network::update();
+        },
+        [](int id)
+        {
+
+            Serial.print("missing id: ");
+            Serial.println(id);
+
+            network::update();
         }
     );
+
+    Serial.println("IDs sent");
+
+    network::update();
+
     network::publish(
         "mda26/fingerprint/exists",
         -1,
@@ -322,9 +360,15 @@ void setup()
 
     ///////////////////////////////////////////////////////
 
+    network::update();
+
     statusTime = millis();
 
     setLed(2, false);
+    setLed(1, false);
+    setLed(0, false);
+
+    Serial.println("finished loading");
 }
 
 
@@ -338,6 +382,9 @@ void setup()
 void loop()
 {
     delay(50);
+
+    //Serial.print("update, statusTime: ");
+    //Serial.println(millis() - statusTime);
 
     network::update();
 
@@ -363,6 +410,7 @@ void loop()
         (int32_t)(millis() - doorUnlockUntil) >= 0
     )
     {
+        Serial.println("door close");
         lock_door();
 
         doorTimerActive = false;
@@ -384,6 +432,11 @@ void loop()
     }
 
     bool isFingerPresent = fingerPresent > 0;
+
+    if(isFingerPresent){
+        Serial.print("fingerPresent: "); 
+        Serial.println(fingerPresent);
+    }
 
     if(isFingerPresent && fingerPresent == lastEnrolledFinger){
         //finger is present and is the last enrolled finger
@@ -408,6 +461,9 @@ void loop()
 
         lastPresentFinger  =
             fingerPresent;
+
+        Serial.println("enroll failed, the fingerprint was already registered");
+
         return;
     }
 
@@ -421,6 +477,9 @@ void loop()
         {
             int id =
                 get_fingerprint_id(0);
+
+            Serial.print("found finger id = ");
+            Serial.println(id);
 
             if (id >= 0)
             {
@@ -462,6 +521,8 @@ void loop()
                 )
             )
             {
+                Serial.println("finger captured first");
+
                 state =
                     STATE_ENROLL_SECOND;
 
@@ -481,6 +542,7 @@ void loop()
             ENROLLMENT_TIMEOUT_MS
         )
         {
+            Serial.println("enrollment timeout");
             end_enrollment();
         }
     }
@@ -502,6 +564,10 @@ void loop()
             {
                 int newId =
                     get_next_available_id();
+
+                Serial.println("place finger second");
+                Serial.print("new ID is ");
+                Serial.println(newId);
 
                 if (lastEnrolledId >= 0){
                     //the last enrolled id is still available
@@ -526,6 +592,8 @@ void loop()
                         "%d",
                         newId
                     );
+
+                    Serial.println("enrollment finished");
 
                     network::publish(
                         "mda26/fingerprint/enrolled",
@@ -554,6 +622,9 @@ void loop()
 
                     lastPresentFinger  =
                         fingerPresent;
+
+                    Serial.println("retry enrollment");
+
                     return;
                 }
 
@@ -576,6 +647,9 @@ void loop()
                     state = STATE_IDLE;
                     lastEnrolledFinger = -1;
                     lastEnrolledId = -1;
+
+                    Serial.print("state = ");
+                    Serial.println(state);
                 }else{
                     //finger pressed two times
                     //after first enrollment, wait for second enrollment
@@ -583,6 +657,9 @@ void loop()
                         fingerPresent;
 
                     state = STATE_ENROLL_FIRST;
+
+                    Serial.print("state = ");
+                    Serial.println(state);
                 }
             
             }
