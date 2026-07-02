@@ -59,6 +59,8 @@ namespace network
             }
             else
             {
+                Serial.print("MQTT failed, rc=");
+                Serial.println(mqttClient.state());
                 delay(1000);
             }
         }
@@ -74,8 +76,13 @@ namespace network
         );
 
         mqttClient.setCallback(
-            callbackFunction
-        );
+        [](char* topic, byte* payload, unsigned int length)
+        {
+            Serial.println("MQTT CALLBACK");
+
+            if (callbackFunction)
+                callbackFunction(topic, payload, length);
+        });
 
         connectWiFi();
         connectMQTT();
@@ -105,6 +112,12 @@ namespace network
             bool retained
         )
     {
+        Serial.print("publishing ");
+        Serial.print(topic);
+        Serial.print(", ");
+        Serial.print(payload);
+        Serial.print(", ");
+        Serial.println(retained ? "true" : "false");
         return mqttClient.publish(topic, payload, retained);
     }
 
@@ -117,12 +130,25 @@ namespace network
         char buffer[12];
         snprintf(buffer, sizeof(buffer), "%d", payload);
 
+        Serial.print("publishing ");
+        Serial.print(topic);
+        Serial.print(", ");
+        Serial.print(payload);
+        Serial.print(", ");
+        Serial.println(retained ? "true" : "false");
         return mqttClient.publish(topic, buffer, retained);
     }
 
     bool subscribe(const char* topic)
     {
-        return mqttClient.subscribe(topic);
+        bool ok = mqttClient.subscribe(topic);
+
+        Serial.print("subscribe ");
+        Serial.print(topic);
+        Serial.print(" -> ");
+        Serial.println(ok ? "OK" : "FAILED");
+
+        return ok;
     }
 
     IPAddress localIP()
